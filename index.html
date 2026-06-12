@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monster Beverage — FP&A Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #021859;
+  --night:  #011140;
+  --teal:   #023059;
+  --slate:  #5D768C;
+  --green:  #1A9E70;
+  --amber:  #B87200;
+  --red:    #C0392B;
+  --blue:   #2E75B6;
+  --cream:  #F2EFE9;
+  --bg:     #F0EEE9;
+  --card:   #FAFAF8;
+  --text:   #0D1117;
+  --muted:  #5D6B7A;
+  --border: rgba(2,24,89,0.08);
+  --monster-green: #4CAF50;
+  --proj-green: #1A9E70;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+/* HEADER */
+.header { background: var(--night); padding: 0 2rem; height: 52px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.logo { font-size: 16px; font-weight: 600; letter-spacing: 0.12em; color: #fff; }
+.logo span { font-size: 10px; color: var(--slate); font-weight: 300; margin-left: 8px; }
+.ticker-badge { background: rgba(76,175,80,0.15); border: 1px solid rgba(76,175,80,0.3); color: #4CAF50; font-size: 10px; font-weight: 600; padding: 2px 10px; border-radius: 4px; font-family: 'DM Mono', monospace; letter-spacing: 0.06em; }
+.header-right { display: flex; gap: 20px; align-items: center; }
+.nav-tab { font-size: 11px; color: rgba(255,255,255,0.45); cursor: pointer; padding: 4px 10px; border-radius: 4px; transition: all .2s; letter-spacing: 0.03em; }
+.nav-tab.active, .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+/* HERO STRIP */
+.hero-strip { background: var(--navy); padding: 20px 2rem 16px; }
+.hero-inner { max-width: 1400px; margin: 0 auto; }
+.hero-title { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.hero-sub { font-size: 12px; color: var(--slate); display: flex; gap: 20px; flex-wrap: wrap; }
+.hero-sub span { display: flex; align-items: center; gap: 5px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot-hist { background: var(--blue); }
+.dot-proj { background: var(--proj-green); }
+
+/* MAIN */
+.main { max-width: 1400px; margin: 0 auto; padding: 24px 2rem 48px; }
+
+/* KPI CARDS */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; position: relative; overflow: hidden; }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0; }
+.kpi-card.green::before { background: var(--proj-green); }
+.kpi-card.blue::before  { background: var(--blue); }
+.kpi-card.amber::before { background: var(--amber); }
+.kpi-card.navy::before  { background: var(--navy); }
+.kpi-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--slate); text-transform: uppercase; margin-bottom: 6px; }
+.kpi-value { font-size: 26px; font-weight: 600; color: var(--navy); font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 6px; }
+.kpi-value .unit { font-size: 13px; font-weight: 400; color: var(--slate); margin-left: 3px; }
+.kpi-change { font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.kpi-change.up   { color: var(--proj-green); }
+.kpi-change.down { color: var(--red); }
+.kpi-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* SECTION LABEL */
+.section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: var(--slate); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* CHART GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 24px; }
+
+/* CHART CARD */
+.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.chart-card.full { }
+.chart-title { font-size: 12px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.chart-sub { font-size: 10.5px; color: var(--muted); margin-bottom: 16px; }
+.chart-wrap { position: relative; }
+.chart-wrap canvas { width: 100% !important; }
+
+/* MARGIN BADGES */
+.margin-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.margin-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 10.5px; font-family: 'DM Mono', monospace; }
+.margin-badge .lbl { color: var(--slate); margin-right: 4px; }
+.margin-badge .val { color: var(--navy); font-weight: 600; }
+
+/* INSIGHT BOX */
+.insight-box { background: rgba(2,24,89,0.04); border-left: 3px solid var(--navy); border-radius: 0 8px 8px 0; padding: 10px 14px; margin-top: 14px; font-size: 11.5px; color: var(--teal); line-height: 1.5; font-style: italic; }
+
+/* WATERFALL TABLE */
+.wf-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wf-table th { background: var(--navy); color: #fff; padding: 8px 12px; font-size: 10px; letter-spacing: 0.06em; text-align: right; font-weight: 600; }
+.wf-table th:first-child { text-align: left; }
+.wf-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; font-size: 11px; }
+.wf-table td:first-child { text-align: left; font-family: 'DM Sans', sans-serif; color: var(--text); font-weight: 500; }
+.wf-table tr:hover td { background: rgba(2,24,89,0.02); }
+.wf-table tr.subtotal td { background: rgba(2,24,89,0.04); font-weight: 600; color: var(--navy); }
+.wf-table tr.total td { background: var(--navy); color: #fff; font-weight: 600; }
+.positive { color: var(--proj-green); }
+.negative { color: var(--red); }
+
+/* FOOTER */
+.dash-footer { border-top: 1px solid var(--border); padding: 20px 2rem; text-align: center; font-size: 10.5px; color: var(--slate); margin-top: 24px; }
+.dash-footer strong { color: var(--navy); }
+
+/* PAGE TABS */
+.page-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 4px; width: fit-content; }
+.page-tab { font-size: 11.5px; font-weight: 500; padding: 6px 16px; border-radius: 7px; cursor: pointer; color: var(--muted); transition: all .18s; }
+.page-tab.active { background: var(--navy); color: #fff; }
+.page-tab:hover:not(.active) { color: var(--text); }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">AIM <span>Analytics & Intelligence for Management</span></div>
+    <div class="ticker-badge">MNST · NASDAQ</div>
+  </div>
+  <div class="header-right">
+    <div class="nav-tab active">FP&A Dashboard</div>
+    <div class="nav-tab">Monster Beverage Corp.</div>
+    <div class="nav-tab">FY2021A – FY2030E</div>
+  </div>
+</header>
+
+<div class="hero-strip">
+  <div class="hero-inner">
+    <div class="hero-title">Monster Beverage Corporation — Financial Performance Dashboard</div>
+    <div class="hero-sub">
+      <span><span class="dot dot-hist"></span> FY2021A – FY2025A Histórico (US GAAP · $USD miles)</span>
+      <span><span class="dot dot-proj"></span> FY2026E – FY2030E Proyectado</span>
+      <span>· 3-Statement Model · 1.231 fórmulas · Balance Check = 0</span>
+      <span>· Fuente: 10-K SEC EDGAR · AIM Analytics</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- PAGE TABS -->
+  <div class="page-tabs">
+    <div class="page-tab active" onclick="showPage('executive')">📊 Executive Summary</div>
+    <div class="page-tab" onclick="showPage('revenue')">📈 Revenue & Segmentos</div>
+    <div class="page-tab" onclick="showPage('pl')">💹 P&L Análisis</div>
+    <div class="page-tab" onclick="showPage('bs')">🏦 Balance & Capital</div>
+    <div class="page-tab" onclick="showPage('kpis')">🎯 KPIs & Ratios</div>
+  </div>
+
+  <!-- ════ PAGE 1: EXECUTIVE ════ -->
+  <div id="page-executive" class="page active">
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">Revenue FY2025A</div>
+        <div class="kpi-value">8.294<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ +10.7% vs FY2024</div>
+        <div class="kpi-sub">FY2030E proyectado: $11.9B</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">EBITDA FY2025A</div>
+        <div class="kpi-value">2.534<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ +26.0% vs FY2024</div>
+        <div class="kpi-sub">Margen: 30.5%</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Net Income FY2025A</div>
+        <div class="kpi-value">1.905<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ +26.3% vs FY2024</div>
+        <div class="kpi-sub">Net Margin: 23.0%</div>
+      </div>
+      <div class="kpi-card navy">
+        <div class="kpi-label">Caja Neta FY2025A</div>
+        <div class="kpi-value">2.088<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ Sin deuda significativa</div>
+        <div class="kpi-sub">Net Debt/EBITDA: -0.8x</div>
+      </div>
+    </div>
+
+    <p class="section-label">Evolución 10 años — Revenue, EBITDA y Net Income</p>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">Revenue · EBITDA · Net Income</div>
+      <div class="chart-sub">En miles de USD · FY2021A–FY2030E · Línea punteada = proyectado</div>
+      <div class="margin-row">
+        <div class="margin-badge"><span class="lbl">GM%</span><span class="val">55.8%</span></div>
+        <div class="margin-badge"><span class="lbl">EBITDA%</span><span class="val">30.5%</span></div>
+        <div class="margin-badge"><span class="lbl">EBIT%</span><span class="val">29.2%</span></div>
+        <div class="margin-badge"><span class="lbl">NI%</span><span class="val">23.0%</span></div>
+        <div class="margin-badge"><span class="lbl">CAGR Rev 5yr</span><span class="val">+8.4%</span></div>
+      </div>
+      <div class="chart-wrap" style="height:280px;">
+        <canvas id="chartMainTrend"></canvas>
+      </div>
+      <div class="insight-box">Monster creció revenue de $5.5B a $8.3B en 5 años (+8.4% CAGR). EBITDA margin expandió de 22.7% a 30.5% — compresión de COGS de 43.9% a 44.2% compensada por apalancamiento operativo en SGA (26.7%). La proyección asume crecimiento decreciente 9%→5% reflejando maduración del mercado americano y aceleración de EMEA.</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Márgenes — Evolución 10 años</div>
+        <div class="chart-sub">Gross Margin · EBITDA Margin · Net Margin (%)</div>
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chartMargins"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cash Flow Operativo vs CapEx</div>
+        <div class="chart-sub">OCF y CapEx en miles USD — Free Cash Flow</div>
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chartOCF"></canvas>
+        </div>
+        <div class="insight-box" style="margin-top:10px;">Monster genera FCF positivo en todos los períodos. Sin deuda, la caja crece de $2.1B (FY2025) a $16.3B proyectado en FY2030 — empresa con net cash neto acumulado.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ PAGE 2: REVENUE ════ -->
+  <div id="page-revenue" class="page">
+
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">US/Canada FY2025</div>
+        <div class="kpi-value">5.073<span class="unit">B</span></div>
+        <div class="kpi-change up">61.2% del total</div>
+        <div class="kpi-sub">FY2030E: $6.7B (+32%)</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">EMEA FY2025</div>
+        <div class="kpi-value">1.900<span class="unit">B</span></div>
+        <div class="kpi-change up">22.9% del total</div>
+        <div class="kpi-sub">Mayor crecimiento proyectado</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Asia Pacific FY2025</div>
+        <div class="kpi-value">624<span class="unit">M</span></div>
+        <div class="kpi-change up">7.5% del total</div>
+        <div class="kpi-sub">Potencial de expansión</div>
+      </div>
+      <div class="kpi-card navy">
+        <div class="kpi-label">Latam FY2025</div>
+        <div class="kpi-value">698<span class="unit">M</span></div>
+        <div class="kpi-change up">8.4% del total</div>
+        <div class="kpi-sub">Mercado emergente</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Revenue por Segmento — Área Apilada</div>
+        <div class="chart-sub">US/Canada · EMEA · Asia Pacific · Latam — miles USD</div>
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="chartSegStacked"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Composición % por Segmento</div>
+        <div class="chart-sub">Mix de ingresos FY2025A vs FY2030E</div>
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="chartSegMix"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">YoY Growth % por Segmento</div>
+        <div class="chart-sub">Tasas de crecimiento año a año — histórico y proyectado</div>
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chartSegGrowth"></canvas>
+        </div>
+        <div class="insight-box">EMEA crece consistentemente más rápido que US/Canada. La convergencia proyectada refleja la maduración esperada del mercado europeo hacia 2029-2030.</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Revenue Total — Barras con breakdown</div>
+        <div class="chart-sub">Composición absoluta por región · FY2021A – FY2030E</div>
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chartSegBars"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ PAGE 3: P&L ════ -->
+  <div id="page-pl" class="page">
+
+    <div class="grid-2-1">
+      <div class="chart-card">
+        <div class="chart-title">P&L Waterfall — FY2025A</div>
+        <div class="chart-sub">Revenue → COGS → Gross Profit → SGA → EBIT → EBITDA</div>
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="chartWaterfall"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">P&L Summary — FY2025A</div>
+        <div class="chart-sub">Línea completa · en miles USD</div>
+        <table class="wf-table" style="margin-top:8px;">
+          <tr><td>Net Revenue</td><td class="positive">8,294,343</td></tr>
+          <tr><td style="padding-left:20px;">— COGS</td><td class="negative">(3,662,148)</td></tr>
+          <tr class="subtotal"><td>Gross Profit</td><td class="positive">4,632,195</td></tr>
+          <tr><td style="padding-left:20px;">GM%</td><td>55.8%</td></tr>
+          <tr><td style="padding-left:20px;">— SGA</td><td class="negative">(2,212,841)</td></tr>
+          <tr class="subtotal"><td>EBIT</td><td class="positive">2,419,354</td></tr>
+          <tr><td style="padding-left:20px;">OM%</td><td>29.2%</td></tr>
+          <tr><td style="padding-left:20px;">+ D&A</td><td class="positive">114,441</td></tr>
+          <tr class="subtotal"><td>EBITDA</td><td class="positive">2,533,795</td></tr>
+          <tr><td style="padding-left:20px;">EBITDA%</td><td>30.5%</td></tr>
+          <tr><td style="padding-left:20px;">— Tax (23.5%)</td><td class="negative">(577,097)</td></tr>
+          <tr class="total"><td>Net Income</td><td>1,905,432</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <p class="section-label">Proyección P&L — FY2026E–FY2030E</p>
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="chart-title">COGS % de Ventas</div>
+        <div class="chart-sub">Tendencia histórica y proyectada</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartCOGSpct"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">SGA % de Ventas</div>
+        <div class="chart-sub">Apalancamiento operativo</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartSGApct"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">EPS Proyectado</div>
+        <div class="chart-sub">Earnings Per Share · USD</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartEPS"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Proyección Comparada — Revenue · EBITDA · Net Income</div>
+      <div class="chart-sub">Todos los períodos FY2021A – FY2030E · en miles USD</div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="chartPLProj"></canvas>
+      </div>
+      <div class="insight-box">La expansión de margen EBITDA de 22.7% (FY2021) a 30.5% (FY2025) se explica por el apalancamiento operativo en SGA. El modelo proyecta una leve mejora adicional hasta ~31.7% en FY2030 asumiendo que los costos fijos crecen más lento que el revenue.</div>
+    </div>
+
+  </div>
+
+  <!-- ════ PAGE 4: BALANCE ════ -->
+  <div id="page-bs" class="page">
+
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">Total Assets FY2025</div>
+        <div class="kpi-value">9.989<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ +29.4% vs FY2024</div>
+        <div class="kpi-sub">FY2030E: $23.1B</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Equity FY2025</div>
+        <div class="kpi-value">8.254<span class="unit">B</span></div>
+        <div class="kpi-change up">82.6% del total activos</div>
+        <div class="kpi-sub">Solvencia muy alta</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Cash FY2025</div>
+        <div class="kpi-value">2.088<span class="unit">B</span></div>
+        <div class="kpi-change up">↑ +36.3% vs FY2024</div>
+        <div class="kpi-sub">FY2030E: $16.3B</div>
+      </div>
+      <div class="kpi-card navy">
+        <div class="kpi-label">Current Ratio</div>
+        <div class="kpi-value">3.1<span class="unit">x</span></div>
+        <div class="kpi-change up">Muy líquida</div>
+        <div class="kpi-sub">Sin deuda neta</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Estructura de Capital — Activos, Pasivos, Equity</div>
+        <div class="chart-sub">Evolución del balance · en miles USD</div>
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="chartCapital"></canvas>
+        </div>
+        <div class="insight-box">El equity representa más del 82% del activo total. La baja deuda y la generación de caja hacen que el balance sea excepcionalmente sólido para una empresa de consumo.</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Evolución del Cash</div>
+        <div class="chart-sub">Caja acumulada FY2021A – FY2030E · miles USD</div>
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="chartCash"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="chart-title">NWC — DSO · DIO · DPO</div>
+        <div class="chart-sub">Días de ciclo de capital de trabajo</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartDays"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Activo Corriente vs No Corriente</div>
+        <div class="chart-sub">Composición del activo total</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartAssetMix"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cash Flow — OCF · ICF · FCF</div>
+        <div class="chart-sub">Flujos anuales · miles USD</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartCFBreak"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ PAGE 5: KPIs ════ -->
+  <div id="page-kpis" class="page">
+
+    <p class="section-label">Rentabilidad</p>
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="chart-title">ROE & ROA</div>
+        <div class="chart-sub">Return on Equity · Return on Assets (%)</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartROE"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Gross · EBITDA · Net Margin %</div>
+        <div class="chart-sub">Evolución de márgenes 10 años</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartMargins2"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">CAGR por Métrica</div>
+        <div class="chart-sub">Tasa de crecimiento anual compuesta FY2021–FY2025</div>
+        <div class="chart-wrap" style="height:180px;">
+          <canvas id="chartCAGR"></canvas>
+        </div>
+        <div class="insight-box">Revenue CAGR 5yr: +10.6%. EBITDA outperforma revenue — compresión de costos y apalancamiento operativo.</div>
+      </div>
+    </div>
+
+    <p class="section-label">Liquidez & Apalancamiento</p>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Net Debt / EBITDA</div>
+        <div class="chart-sub">Negativo = empresa con caja neta (sin deuda)</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="chartLeverage"></canvas>
+        </div>
+        <div class="insight-box">Monster tiene caja neta en todos los períodos. Deuda Neta/EBITDA negativo indica que tiene más efectivo que deuda — posición financiera excepcional. En FY2030E la caja proyectada supera los $16B.</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">FCF — Free Cash Flow</div>
+        <div class="chart-sub">OCF - CapEx · miles USD · generación de caja libre</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="chartFCF"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-label">Tabla resumen de KPIs</p>
+    <div class="chart-card">
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;width:200px;">KPI</th>
+            <th>FY2021A</th><th>FY2022A</th><th>FY2023A</th><th>FY2024A</th><th>FY2025A</th>
+            <th>FY2026E</th><th>FY2027E</th><th>FY2028E</th><th>FY2029E</th><th>FY2030E</th>
+          </tr>
+        </thead>
+        <tbody id="kpiTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div><!-- /main -->
+
+<div class="dash-footer">
+  <strong>AIM Analytics</strong> · Gonzalo Dalmasso Müller · Monster Beverage Corp. (NASDAQ: MNST) · 3-Statement Financial Model · FY2021A–FY2030E · US GAAP · $USD miles
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────
+const YEARS = ["FY2021A","FY2022A","FY2023A","FY2024A","FY2025A","FY2026E","FY2027E","FY2028E","FY2029E","FY2030E"];
+const HIST  = 5;
+
+const D = {
+  rev:   [5541352,6311050,7140027,7492709,8294343,9015363,9713897,10439846,11128718,11867719],
+  ebitda:[1847622,1645962,2022253,2010728,2533795,2704609,2962738,3215472,3483289,3762067],
+  ni:    [1377475,1191624,1630988,1509048,1905432,2029093,2219615,2405737,2603766,2809682],
+  gp:    [3108513,3174567,3794206,4048878,4632195,4976480,5391213,5814994,6232082,6669658],
+  ebit:  [1797467,1584721,1953355,1930294,2419354,2587409,2836458,3079755,3338615,3607786],
+  cogs:  [2432839,3136483,3345821,3443831,3662148,4038883,4322684,4624852,4896636,5198061],
+  sga:   [1311046,1589846,1840851,2118584,2212841,2389071,2554755,2735240,2893467,3061871],
+  us:    [3640011,4115544,4610069,4721853,5072691,5427779,5753446,6098653,6403586,6723765],
+  emea:  [1103428,1228742,1390659,1563366,1899568,2146512,2404093,2668544,2935398,3228938],
+  apac:  [472834, 456186, 514449, 541036, 624113, 680283, 734706, 793482, 849026, 908458],
+  latam: [325079, 510578, 624850, 666454, 697971, 760788, 821651, 879167, 940709,1006558],
+  ocf:   [1514542,1374508,1770762,1668762,2149770,4148608,2484821,2696308,2881512,3129058],
+  capex: [43868,  188726, 221428, 264074, 132275, 225384, 242847, 250556, 267089, 272958],
+  fcf:   [1470674,1185782,1549334,1404688,2017495,3923224,2241974,2445752,2614423,2856101],
+  cash:  [1326462,1307141,2297675,1533287,2088117,7517203,9409177,11504929,13769351,16275452],
+  ta:    [7804784,8293105,9686522,7719089,9988945,13685543,15718223,17951146,20389453,23050712],
+  tca:   [4682110,4764897,5588996,3641504,5361084,8963290,10893058,13024661,15353935,17909767],
+  te:    [6566951,7025041,8228744,5957718,8254108,11802673,13706954,15811308,18122481,20656422],
+  tl:    [1237833,1268064,1457778,1761371,1734837,1882870,2011268,2139838,2266972,2394290],
+  dso:   [59.1,58.8,61.0,59.5,71.2,62.0,61.0,60.0,60.0,59.0],
+  dio:   [89.0,108.9,106.0,78.1,79.7,85.0,84.0,83.0,82.0,80.0],
+  dpo:   [60.7,51.7,61.6,49.5,56.4,56.0,56.0,56.0,56.0,56.0],
+};
+
+// Computed
+D.gm_pct  = D.rev.map((r,i) => r>0 ? D.gp[i]/r   : 0);
+D.ebt_pct = D.rev.map((r,i) => r>0 ? D.ebitda[i]/r: 0);
+D.om_pct  = D.rev.map((r,i) => r>0 ? D.ebit[i]/r  : 0);
+D.nm_pct  = D.rev.map((r,i) => r>0 ? D.ni[i]/r    : 0);
+D.cogs_pct= D.rev.map((r,i) => r>0 ? D.cogs[i]/r  : 0);
+D.sga_pct = D.rev.map((r,i) => r>0 ? D.sga[i]/r   : 0);
+D.roe     = D.te.map((e,i)  => e>0 ? D.ni[i]/e    : 0);
+D.roa     = D.ta.map((a,i)  => a>0 ? D.ni[i]/a    : 0);
+D.net_debt= D.cash.map((c,i) => -c); // no debt
+D.eps     = D.ni.map(n => n/975887); // shares in thousands
+
+// ── CHART HELPERS ────────────────────────────────────────────────
+const NAVY  = '#021859'; const TEAL  = '#023059'; const SLATE = '#5D768C';
+const GREEN = '#1A9E70'; const AMBER = '#B87200'; const RED   = '#C0392B';
+const BLUE  = '#2E75B6'; const LGRAY = 'rgba(93,118,140,0.15)';
+
+function histProj(data, histColor, projColor, dash=false) {
+  const h = data.slice(0,HIST), p = data.slice(HIST-1);
+  return [
+    { data: h.concat(Array(5).fill(null)), borderColor: histColor, backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: histColor, tension: 0.35 },
+    { data: Array(HIST-1).fill(null).concat(p), borderColor: projColor, backgroundColor: 'transparent', borderWidth: 2, borderDash: [5,4], pointRadius: 2.5, pointBackgroundColor: projColor, tension: 0.35 }
+  ];
+}
+
+function mkLine(id, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10, family: 'DM Sans' }, boxWidth: 10, padding: 8 } }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        x: { grid: { color: LGRAY }, ticks: { font: { size: 9 }, color: SLATE } },
+        y: { grid: { color: LGRAY }, ticks: { font: { size: 9 }, color: SLATE, callback: opts.yFmt || (v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v.toFixed(opts.dec||0)) } }
+      },
+      ...opts.extra
+    }
+  });
+}
+
+function mkBar(id, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } } },
+      scales: {
+        x: { stacked: opts.stacked||false, grid: { display: false }, ticks: { font: { size: 9 }, color: SLATE } },
+        y: { stacked: opts.stacked||false, grid: { color: LGRAY }, ticks: { font: { size: 9 }, color: SLATE, callback: opts.yFmt || (v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v.toFixed(opts.dec||0)) } }
+      }
+    }
+  });
+}
+
+function mkDoughnut(id, labels, data, colors) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#FAFAF8' }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } } } }
+  });
+}
+
+// ── BUILD ALL CHARTS ─────────────────────────────────────────────
+window.addEventListener('load', () => {
+
+// PAGE 1 — EXECUTIVE
+mkLine('chartMainTrend', YEARS, [
+  ...histProj(D.rev,   NAVY,  NAVY),
+  ...histProj(D.ebitda, BLUE, BLUE),
+  ...histProj(D.ni,    GREEN, GREEN),
+].map((ds,i) => ({...ds, label: ['Revenue (hist)','Revenue (proj)','EBITDA (hist)','EBITDA (proj)','Net Income (hist)','Net Income (proj)'][i]})));
+
+mkLine('chartMargins', YEARS, [
+  { label:'Gross Margin %', data: D.gm_pct, borderColor: GREEN, borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+  { label:'EBITDA Margin %', data: D.ebt_pct, borderColor: BLUE, borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+  { label:'Net Margin %', data: D.nm_pct, borderColor: AMBER, borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+], { yFmt: v => (v*100).toFixed(1)+'%', extra:{} });
+
+mkBar('chartOCF', YEARS, [
+  { label:'Operating CF', data: D.ocf, backgroundColor: YEARS.map((_,i)=>i<HIST?NAVY+'CC':GREEN+'CC'), borderRadius:4 },
+  { label:'CapEx', data: D.capex.map(v=>-v), backgroundColor: YEARS.map((_,i)=>i<HIST?RED+'88':RED+'55'), borderRadius:4 },
+]);
+
+// PAGE 2 — REVENUE
+mkBar('chartSegBars', YEARS, [
+  { label:'US/Canada',    data: D.us,   backgroundColor: NAVY+'CC',  borderRadius:3 },
+  { label:'EMEA',         data: D.emea, backgroundColor: BLUE+'CC',  borderRadius:3 },
+  { label:'Asia Pacific', data: D.apac, backgroundColor: GREEN+'CC', borderRadius:3 },
+  { label:'Latam',        data: D.latam,backgroundColor: AMBER+'CC', borderRadius:3 },
+], { stacked: true });
+
+mkLine('chartSegStacked', YEARS, [
+  { label:'US/Canada',    data: D.us,   borderColor: NAVY,  fill:true, backgroundColor: NAVY+'22',  tension:.3, borderWidth:2, pointRadius:2 },
+  { label:'EMEA',         data: D.emea, borderColor: BLUE,  fill:true, backgroundColor: BLUE+'22',  tension:.3, borderWidth:2, pointRadius:2 },
+  { label:'Asia Pacific', data: D.apac, borderColor: GREEN, fill:true, backgroundColor: GREEN+'22', tension:.3, borderWidth:2, pointRadius:2 },
+  { label:'Latam',        data: D.latam,borderColor: AMBER, fill:true, backgroundColor: AMBER+'22', tension:.3, borderWidth:2, pointRadius:2 },
+]);
+
+// Doughnut mix FY2025 vs FY2030
+const revTot25 = D.us[4]+D.emea[4]+D.apac[4]+D.latam[4];
+const revTot30 = D.us[9]+D.emea[9]+D.apac[9]+D.latam[9];
+const ctx25 = document.getElementById('chartSegMix');
+if (ctx25) {
+  new Chart(ctx25, {
+    type: 'bar',
+    data: {
+      labels: ['US/Canada','EMEA','Asia Pacific','Latam'],
+      datasets: [
+        { label:'FY2025A %', data: [D.us[4]/revTot25, D.emea[4]/revTot25, D.apac[4]/revTot25, D.latam[4]/revTot25], backgroundColor: [NAVY+'CC',BLUE+'CC',GREEN+'CC',AMBER+'CC'], borderRadius: 4 },
+        { label:'FY2030E %', data: [D.us[9]/revTot30, D.emea[9]/revTot30, D.apac[9]/revTot30, D.latam[9]/revTot30], backgroundColor: [NAVY+'55',BLUE+'55',GREEN+'55',AMBER+'55'], borderRadius: 4 },
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}} }, scales:{ x:{grid:{display:false},ticks:{font:{size:9}}}, y:{ticks:{callback:v=>(v*100).toFixed(0)+'%',font:{size:9}},grid:{color:LGRAY}} } }
+  });
+}
+
+const calcGrowth = (arr) => arr.map((v,i) => i===0 ? null : arr[i-1]>0 ? (v/arr[i-1]-1)*100 : null);
+mkLine('chartSegGrowth', YEARS, [
+  { label:'US/Canada',    data: calcGrowth(D.us),   borderColor:NAVY,  borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+  { label:'EMEA',         data: calcGrowth(D.emea), borderColor:BLUE,  borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+  { label:'Asia Pacific', data: calcGrowth(D.apac), borderColor:GREEN, borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+  { label:'Latam',        data: calcGrowth(D.latam),borderColor:AMBER, borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+], { yFmt: v => v!==null ? v.toFixed(1)+'%' : '' });
+
+// PAGE 3 — P&L
+// Waterfall FY2025
+const ctxWF = document.getElementById('chartWaterfall');
+if (ctxWF) {
+  const wfLabels = ['Revenue','— COGS','Gross Profit','— SGA','EBIT','+ D&A','EBITDA'];
+  const wfVals   = [8294343, -3662148, 4632195, -2212841, 2419354, 114441, 2533795];
+  const wfColors = [NAVY+'CC', RED+'99', GREEN+'CC', RED+'99', BLUE+'CC', SLATE+'AA', GREEN+'CC'];
+  new Chart(ctxWF, {
+    type:'bar', data:{ labels:wfLabels, datasets:[{ data:wfVals, backgroundColor:wfColors, borderRadius:5 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{font:{size:9}}}, y:{grid:{color:LGRAY},ticks:{font:{size:9},callback:v=>(v/1e6).toFixed(1)+'M'}} } }
+  });
+}
+
+mkLine('chartCOGSpct', YEARS, [
+  { label:'COGS %', data: D.cogs_pct, borderColor: RED, borderWidth:2, pointRadius:2, tension:.35, fill:true, backgroundColor: RED+'15', borderDash: YEARS.map((_,i)=>i>=HIST?[5,4]:[]) },
+], { yFmt: v=>(v*100).toFixed(1)+'%' });
+
+mkLine('chartSGApct', YEARS, [
+  { label:'SGA %', data: D.sga_pct, borderColor: AMBER, borderWidth:2, pointRadius:2, tension:.35, fill:true, backgroundColor: AMBER+'15' },
+], { yFmt: v=>(v*100).toFixed(1)+'%' });
+
+mkLine('chartEPS', YEARS, [
+  { label:'EPS (USD)', data: D.eps, borderColor: NAVY, borderWidth:2.5, pointRadius:3, tension:.35, fill:true, backgroundColor: NAVY+'15' },
+], { yFmt: v=>'$'+v.toFixed(2), dec:2 });
+
+mkLine('chartPLProj', YEARS, [
+  ...histProj(D.rev, NAVY, NAVY),
+  ...histProj(D.ebitda, BLUE, BLUE),
+  ...histProj(D.ni, GREEN, GREEN),
+].map((ds,i)=>({...ds, label:['Rev hist','Rev proj','EBITDA hist','EBITDA proj','NI hist','NI proj'][i]})));
+
+// PAGE 4 — BALANCE
+mkBar('chartCapital', YEARS, [
+  { label:'Total Equity',     data:D.te, backgroundColor:NAVY+'CC', borderRadius:4 },
+  { label:'Total Liabilities',data:D.tl, backgroundColor:SLATE+'88', borderRadius:4 },
+], { stacked: true });
+
+mkLine('chartCash', YEARS, [
+  { label:'Cash',  data:D.cash, borderColor:GREEN, borderWidth:2.5, fill:true, backgroundColor:GREEN+'18', tension:.35, pointRadius:3, pointBackgroundColor:GREEN },
+], {});
+
+mkLine('chartDays', YEARS, [
+  { label:'DSO', data:D.dso, borderColor:NAVY,  borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+  { label:'DIO', data:D.dio, borderColor:BLUE,  borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+  { label:'DPO', data:D.dpo, borderColor:AMBER, borderWidth:2, pointRadius:2, tension:.3, fill:false, backgroundColor:'transparent' },
+], { yFmt: v=>v.toFixed(0)+' d' });
+
+mkBar('chartAssetMix', YEARS, [
+  { label:'Current Assets',    data:D.tca, backgroundColor:BLUE+'CC', borderRadius:4 },
+  { label:'Non-Current Assets',data:D.ta.map((v,i)=>v-D.tca[i]), backgroundColor:NAVY+'88', borderRadius:4 },
+], { stacked: true });
+
+mkBar('chartCFBreak', YEARS, [
+  { label:'OCF', data:D.ocf,  backgroundColor:GREEN+'CC', borderRadius:4 },
+  { label:'CapEx',data:D.capex.map(v=>-v), backgroundColor:RED+'88',  borderRadius:4 },
+  { label:'FCF', data:D.fcf,  backgroundColor:NAVY+'AA', borderRadius:4 },
+]);
+
+// PAGE 5 — KPIs
+mkLine('chartROE', YEARS, [
+  { label:'ROE', data:D.roe, borderColor:NAVY, borderWidth:2, pointRadius:2, fill:true, backgroundColor:NAVY+'15', tension:.35 },
+  { label:'ROA', data:D.roa, borderColor:BLUE, borderWidth:2, pointRadius:2, fill:true, backgroundColor:BLUE+'15', tension:.35 },
+], { yFmt: v=>(v*100).toFixed(1)+'%' });
+
+mkLine('chartMargins2', YEARS, [
+  { label:'GM%',     data:D.gm_pct,  borderColor:GREEN, borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+  { label:'EBITDA%', data:D.ebt_pct, borderColor:BLUE,  borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+  { label:'NM%',     data:D.nm_pct,  borderColor:AMBER, borderWidth:2, pointRadius:2, tension:.35, fill:false, backgroundColor:'transparent' },
+], { yFmt: v=>(v*100).toFixed(1)+'%' });
+
+// CAGR bars
+const cagr = {
+  Revenue:     Math.pow(D.rev[4]/D.rev[0], 1/4)-1,
+  EBITDA:      Math.pow(D.ebitda[4]/D.ebitda[0], 1/4)-1,
+  'Net Income':Math.pow(D.ni[4]/D.ni[0], 1/4)-1,
+  'Gross Profit':Math.pow(D.gp[4]/D.gp[0], 1/4)-1,
+};
+mkBar('chartCAGR', Object.keys(cagr), [
+  { label:'CAGR FY21-25', data:Object.values(cagr).map(v=>v*100), backgroundColor:[NAVY+'CC',BLUE+'CC',GREEN+'CC',AMBER+'CC'], borderRadius:5 },
+], { yFmt: v=>v.toFixed(1)+'%' });
+
+mkBar('chartLeverage', YEARS, [
+  { label:'Net Debt / EBITDA', data:D.net_debt.map((v,i)=>D.ebitda[i]>0?v/D.ebitda[i]:0), backgroundColor:YEARS.map((_,i)=>i<HIST?NAVY+'CC':SLATE+'88'), borderRadius:4 },
+]);
+
+mkBar('chartFCF', YEARS, [
+  { label:'Free Cash Flow', data:D.fcf, backgroundColor:YEARS.map((_,i)=>i<HIST?GREEN+'CC':GREEN+'77'), borderRadius:4 },
+]);
+
+// KPI TABLE
+const kpiRows = [
+  ['Gross Margin %', D.gm_pct.map(v=>(v*100).toFixed(1)+'%')],
+  ['EBITDA Margin %', D.ebt_pct.map(v=>(v*100).toFixed(1)+'%')],
+  ['EBIT Margin %', D.om_pct.map(v=>(v*100).toFixed(1)+'%')],
+  ['Net Margin %', D.nm_pct.map(v=>(v*100).toFixed(1)+'%')],
+  ['ROE', D.roe.map(v=>(v*100).toFixed(1)+'%')],
+  ['ROA', D.roa.map(v=>(v*100).toFixed(1)+'%')],
+  ['DSO (días)', D.dso.map(v=>v.toFixed(1))],
+  ['DIO (días)', D.dio.map(v=>v.toFixed(1))],
+  ['DPO (días)', D.dpo.map(v=>v.toFixed(1))],
+  ['FCF ($M)', D.fcf.map(v=>(v/1e6).toFixed(0))],
+  ['Net Debt ($M)', D.net_debt.map(v=>(v/1e6).toFixed(0))],
+  ['Net Debt/EBITDA', D.net_debt.map((v,i)=>D.ebitda[i]>0?(v/D.ebitda[i]).toFixed(1)+'x':'—')],
+  ['EPS (USD)', D.eps.map(v=>'$'+v.toFixed(2))],
+];
+const tbody = document.getElementById('kpiTableBody');
+kpiRows.forEach(([label, vals]) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${label}</td>` + vals.map((v,i) => `<td class="${i>=HIST?'positive':''}">${v}</td>`).join('');
+  tbody.appendChild(tr);
+});
+
+});
+
+// ── PAGE NAVIGATION ──────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+</script>
+</body>
+</html>
